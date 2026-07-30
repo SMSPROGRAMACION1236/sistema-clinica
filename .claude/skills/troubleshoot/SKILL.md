@@ -31,6 +31,16 @@ Si Paraguay volviera a tener horario de verano, el único lugar a tocar es la co
 
 `apk add tzdata` en el Dockerfile del bot se dejó igual (no molesta, puede servir para otras cosas), pero ya no es la pieza que resuelve este bug.
 
+## El bot dice que "confirmó" un turno pero no aparece nada en el panel
+
+**Síntoma:** el bot ofrece un profesional, pregunta si confirmás fecha/hora, respondés algo tipo "todo correcto" en un mensaje aparte, y el turno nunca aparece en `/turnos` — o el bot sigue la conversación como si hubiera funcionado.
+
+**Causa real:** `create_appointment` originalmente pedía `professionalId` (el id interno de la fila `Professional`), un dato que el LLM solo conoce si llamó `list_professionals` **en ese mismo turno**. El historial de conversación que se reconstruye en cada mensaje nuevo (`apps/bot/src/conversation/engine.ts`) solo guarda texto (`Message.body`), no los intercambios de tool calls — así que en el mensaje siguiente ("todo correcto"), el modelo ya no tenía forma de recuperar ese id, y terminaba fallando en silencio o inventando una confirmación sin ejecutar la herramienta.
+
+**Solución aplicada:** `create_appointment` ahora recibe `professionalName` (el nombre completo, que sí queda disponible en el texto de la conversación y en la lista de especialidades del prompt) y lo resuelve contra la base en el momento — ya no depende de que el modelo recuerde un id de un turno anterior. Si volvés a tocar `apps/bot/src/conversation/tools.ts`, no vuelvas a introducir un parámetro que solo exista en la salida de otra tool call de un turno previo — cualquier dato que la herramienta necesite tiene que poder reconstruirse desde el texto plano de la conversación.
+
+También se reforzó `DEFAULT_BOT_INSTRUCTIONS` (`packages/db/src/constants.ts`) para que el bot nunca diga "quedó confirmado" sin haber llamado la herramienta en ese turno, y `apps/bot/src/webhook.ts` ahora le avisa al paciente si hubo un error interno en vez de dejarlo sin respuesta (antes, un error se perdía en el log del contenedor sin que nadie del lado del chat se enterara).
+
 ## El bot no responde a notas de voz (audio) o tira error de transcripción
 
 **Causa posible 1 — falta `OPENROUTER_TRANSCRIPTION_MODEL`:** si no está seteada, cae al default `openai/whisper-large-v3-turbo`, así que no debería faltar, pero confirmá que la variable esté en el Environment del bot si cambiaste el modelo.

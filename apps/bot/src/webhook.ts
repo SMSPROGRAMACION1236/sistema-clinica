@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "@sistema-clinica/db";
-import { verifyYCloudSignature, downloadMedia } from "./services/ycloud";
+import { verifyYCloudSignature, downloadMedia, sendWhatsAppText } from "./services/ycloud";
 import { transcribeAudio } from "./services/transcription";
 import { handleIncomingMessage } from "./conversation/engine";
 import { isNumberAllowed } from "./lib/allowlist";
@@ -43,6 +43,13 @@ webhookRouter.post("/webhook/ycloud", async (req, res) => {
     await handleIncomingMessage(message.from, text, message.customerProfile?.name);
   } catch (err) {
     console.error("[webhook] error procesando mensaje entrante:", err);
+    // Nunca dejar al paciente sin respuesta ante un error interno — si no,
+    // parece que "no pasó nada" tanto para el paciente como para quien mira
+    // el panel esperando ver el turno.
+    await sendWhatsAppText(
+      message.from,
+      "Uy, tuvimos un problema técnico armando tu turno. ¿Podés escribirme de nuevo en un momento? Si vuelve a pasar, un humano te va a contactar."
+    ).catch((sendErr) => console.error("[webhook] no se pudo avisar del error al paciente:", sendErr));
   }
 });
 

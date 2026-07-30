@@ -19,10 +19,10 @@ export const listProfessionalsTool: ToolDefinition = {
   },
 };
 
-export async function runListProfessionals(args: { specialty: string }): Promise<{ professionals: { id: string; name: string }[] }> {
+export async function runListProfessionals(args: { specialty: string }): Promise<{ professionals: { name: string }[] }> {
   const professionals = await prisma.professional.findMany({
     where: { specialty: args.specialty, active: true },
-    select: { id: true, name: true },
+    select: { name: true },
   });
   return { professionals };
 }
@@ -32,23 +32,23 @@ export const createAppointmentTool: ToolDefinition = {
   function: {
     name: "create_appointment",
     description:
-      "Crea un turno para el paciente con un profesional puntual. Llamar únicamente después de que el paciente confirmó explícitamente nombre, profesional (usar el id devuelto por list_professionals), fecha y hora.",
+      "Crea un turno para el paciente con un profesional puntual. Llamar únicamente después de que el paciente confirmó explícitamente nombre, profesional, fecha y hora. No hace falta haber llamado list_professionals antes en el mismo turno — alcanza con el nombre del profesional tal cual aparece en la conversación o en la lista de especialidades del prompt.",
     parameters: {
       type: "object",
       properties: {
         name: { type: "string", description: "Nombre completo del paciente" },
-        professionalId: { type: "string", description: "Id del profesional elegido, obtenido de list_professionals" },
+        professionalName: { type: "string", description: "Nombre completo del profesional elegido, tal cual aparece en la lista de especialidades/profesionales (ej. \"Dra. Lucía Ramírez\")" },
         date: { type: "string", description: "Fecha del turno en formato YYYY-MM-DD" },
         time: { type: "string", description: "Hora del turno en formato HH:MM de 24 horas" },
       },
-      required: ["name", "professionalId", "date", "time"],
+      required: ["name", "professionalName", "date", "time"],
     },
   },
 };
 
 interface CreateAppointmentArgs {
   name: string;
-  professionalId: string;
+  professionalName: string;
   date: string;
   time: string;
 }
@@ -63,6 +63,13 @@ export async function runCreateAppointment(
     return { success: false, message: "Datos del turno inválidos o incompletos." };
   }
 
+  const professional = await prisma.professional.findFirst({
+    where: { name: { equals: args.professionalName?.trim(), mode: "insensitive" }, active: true },
+  });
+  if (!professional) {
+    return { success: false, message: `No encontramos a "${args.professionalName}" entre los profesionales activos. Llamá a list_professionals para confirmar el nombre exacto antes de reintentar.` };
+  }
+
   const [hour, minute] = args.time.split(":").map(Number);
   const date = clinicDateTime(args.date, hour, minute);
 
@@ -70,12 +77,12 @@ export async function runCreateAppointment(
     return { success: false, message: "La fecha y hora ya pasaron. Pedile al paciente una fecha futura." };
   }
 
-  const availability = await checkAvailability(args.professionalId, date);
+  const availability = await checkAvailability(professional.id, date);
   if (!availability.available) {
     return { success: false, message: unavailabilityMessage(availability) };
   }
 
-  const free = await isSlotFree(args.professionalId, date);
+  const free = await isSlotFree(professional.id, date);
   if (!free) {
     return { success: false, message: "Ese horario ya está ocupado. Ofrecele otro horario cercano." };
   }
@@ -86,12 +93,12 @@ export async function runCreateAppointment(
   }
 
   await prisma.appointment.create({
-    data: { patientId, professionalId: args.professionalId, date, status: "PENDING", channel: "WHATSAPP" },
+    data: { patientId, professionalId: professional.id, date, status: "PENDING", channel: "WHATSAPP" },
   });
 
   return {
     success: true,
-    message: `Turno creado para ${args.name}, el ${args.date} a las ${args.time}.`,
+    message: `Turno creado para ${args.name} con ${professional.name}, el ${args.date} a las ${args.time}.`,
   };
 }
 
