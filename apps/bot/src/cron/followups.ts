@@ -15,8 +15,13 @@ export function startFollowUpCron(): void {
   console.log(`[cron] seguimientos activos (${CHECK_INTERVAL_CRON}), delay ${env.followupDelayMinutes} min`);
 }
 
-/** Conversaciones sin respuesta del paciente: dispara un nudge antes de que cierre la ventana de 24h de WhatsApp. */
-async function sendPendingFollowUps(): Promise<void> {
+/**
+ * Conversaciones sin respuesta del paciente: dispara un nudge antes de que
+ * cierre la ventana de 24h de WhatsApp. Exportada (no solo interna del cron)
+ * para poder dispararla a mano desde la consola sin esperar hasta 15 min al
+ * próximo tick — útil para demos grabadas.
+ */
+export async function sendPendingFollowUps(): Promise<void> {
   const now = new Date();
   const cutoff = new Date(now.getTime() - env.followupDelayMinutes * 60 * 1000);
 
