@@ -1,0 +1,24 @@
+{
+  "name": "@sistema-clinica/bot",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@sistema-clinica/db": "workspace:*",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.7.0",
+    "@types/node-cron": "^3.0.11",
+    "dotenv-cli": "^7.4.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

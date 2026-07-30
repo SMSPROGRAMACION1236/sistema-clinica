@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink-primary: #0b0b0b;
+  --ink-secondary: #52514e;
+  --ink-muted: #898781;
+  --border: rgba(11, 11, 11, 0.1);
+  --gridline: #e1e0d9;
+
+  --accent: #2a78d6;
+  --accent-wash: #eaf1fb;
+
+  --status-good: #0ca30c;
+  --status-good-wash: #e8f7e8;
+  --status-warning: #b9790a;
+  --status-warning-wash: #fdf1dc;
+  --status-serious: #c65a34;
+  --status-serious-wash: #fbe9e1;
+  --status-critical: #d03b3b;
+  --status-critical-wash: #fbe6e6;
+  --status-neutral: #6b6a65;
+  --status-neutral-wash: #eeede9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink-primary: #ffffff;
+    --ink-secondary: #c3c2b7;
+    --ink-muted: #898781;
+    --border: rgba(255, 255, 255, 0.1);
+    --gridline: #2c2c2a;
+
+    --accent: #3987e5;
+    --accent-wash: #17263a;
+
+    --status-good: #0ca30c;
+    --status-good-wash: #123317;
+    --status-warning: #fab219;
+    --status-warning-wash: #3a2c0c;
+    --status-serious: #ec835a;
+    --status-serious-wash: #3a2317;
+    --status-critical: #e66767;
+    --status-critical-wash: #3a1a1a;
+    --status-neutral: #a3a29c;
+    --status-neutral-wash: #262622;
+  }
+}
+
+body {
+  background-color: var(--page);
+  color: var(--ink-primary);
+}
+
+::selection {
+  background-color: var(--accent-wash);
+}

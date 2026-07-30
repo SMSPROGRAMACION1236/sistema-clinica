@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+  COMPLETED
+}
+
+enum AppointmentChannel {
+  WHATSAPP
+  MOSTRADOR
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum ConversationStep {
+  IDLE
+  AWAITING_CONFIRMATION
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ClinicSettings {
+  id               String   @id @default(cuid())
+  name             String
+  address          String
+  phone            String
+  weeklyHours      Json
+  botInstructions  String?
+  activePromotions String?
+  botEnabled       Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+model Patient {
+  id           String              @id @default(cuid())
+  phone        String              @unique
+  name         String?
+  email        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  appointments Appointment[]
+  messages     Message[]
+  conversation ConversationState?
+  followUp     FollowUp?
+}
+
+model Professional {
+  id                 String                               @id @default(cuid())
+  name               String
+  specialty          String
+  weeklyAvailability Json
+  active             Boolean                              @default(true)
+  createdAt          DateTime                             @default(now())
+  updatedAt          DateTime                             @updatedAt
+  appointments       Appointment[]
+  exceptions         ProfessionalAvailabilityException[]
+
+  @@index([specialty])
+}
+
+/// Disponibilidad puntual por profesional+fecha (toggle en la sección Profesionales del panel).
+model ProfessionalAvailabilityException {
+  id             String       @id @default(cuid())
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id])
+  date           DateTime
+  available      Boolean
+  createdAt      DateTime     @default(now())
+
+  @@unique([professionalId, date])
+}
+
+/// Días bloqueados generales (feriados/cierre) - corte duro, independiente del profesional.
+model BlackoutDay {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model Appointment {
+  id             String             @id @default(cuid())
+  patientId      String
+  patient        Patient            @relation(fields: [patientId], references: [id])
+  professionalId String
+  professional   Professional       @relation(fields: [professionalId], references: [id])
+  date           DateTime
+  status         AppointmentStatus  @default(PENDING)
+  channel        AppointmentChannel @default(WHATSAPP)
+  notes          String?
+  reminderSentAt DateTime?
+  confirmedAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([date])
+  @@index([status])
+  @@index([professionalId, date])
+}
+
+model Message {
+  id              String           @id @default(cuid())
+  patientId       String
+  patient         Patient          @relation(fields: [patientId], references: [id])
+  direction       MessageDirection
+  body            String
+  ycloudMessageId String?
+  createdAt       DateTime         @default(now())
+
+  @@index([patientId, createdAt])
+}
+
+model ConversationState {
+  id        String           @id @default(cuid())
+  patientId String           @unique
+  patient   Patient          @relation(fields: [patientId], references: [id])
+  step      ConversationStep @default(IDLE)
+  context   Json             @default("{}")
+  updatedAt DateTime         @updatedAt
+}
+
+/// Ventana de 24h de WhatsApp desde el último mensaje entrante + toggle de la sección Seguimientos.
+model FollowUp {
+  id              String    @id @default(cuid())
+  patientId       String    @unique
+  patient         Patient   @relation(fields: [patientId], references: [id])
+  lastInboundAt   DateTime
+  windowExpiresAt DateTime
+  disabled        Boolean   @default(false)
+  sentAt          DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@index([windowExpiresAt])
+}

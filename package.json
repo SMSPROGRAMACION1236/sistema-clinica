@@ -1,0 +1,17 @@
+{
+  "name": "sistema-clinica",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "db:generate": "pnpm --filter @sistema-clinica/db run generate && pnpm --filter @sistema-clinica/db run build",
+    "db:migrate": "pnpm --filter @sistema-clinica/db run migrate && pnpm --filter @sistema-clinica/db run build",
+    "db:seed": "pnpm --filter @sistema-clinica/db run seed",
+    "db:studio": "pnpm --filter @sistema-clinica/db run studio",
+    "bot:dev": "pnpm --filter @sistema-clinica/bot run dev",
+    "panel:dev": "pnpm --filter @sistema-clinica/panel run dev"
+  }
+}
