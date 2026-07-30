@@ -19,6 +19,14 @@ Cada uno de estos pasó de verdad mientras se armaba este repo (o su proyecto he
 4. **El bot está apagado desde el panel** (`ClinicSettings.botEnabled = false`, sección Configuración → kill switch). Log esperado: `[webhook] mensaje ignorado (bot apagado desde el panel)`. Antes de asumir otra causa, entrá a `/configuracion` en el panel y confirmá que el toggle esté en "Activo".
 5. Revisá los logs del contenedor del bot en vivo mientras alguien manda el mensaje — no asumas nada sin ver el log real.
 
+## El bot dice "el profesional no atiende hoy" para un horario que en realidad está fuera de rango (no es un día libre)
+
+**Síntoma:** le pedís un turno a un profesional en un horario fuera de su rango de atención (ej. las 15hs a alguien que atiende de 8 a 13) y el bot responde como si no atendiera *ese día*, en vez de decir que ese horario puntual no está disponible.
+
+**Causa:** `apps/bot/src/services/availability.ts` (`isProfessionalAvailableOn`) originalmente solo chequeaba si el día de la semana estaba habilitado en `weeklyAvailability`, sin comparar la hora pedida contra `open`/`close` de ese día — ya está arreglado (función `isWithinRange`). Si volvés a tocar ese archivo, no saques ese chequeo.
+
+**Relacionado — zona horaria en Alpine:** el `Dockerfile` del bot instala `tzdata` (`apk add --no-cache openssl tzdata`) porque Alpine no la trae por defecto. Sin esto, aunque `TZ=America/Asuncion` esté seteada como variable de entorno, los cálculos de fecha/hora del contenedor pueden quedar inconsistentes (afecta qué día de la semana y qué hora "cree" que es el bot al chequear disponibilidad). Si ves comportamiento raro de fechas/horarios que no se explica por el código, confirmá primero que la imagen desplegada tiene este paquete — si el bot está corriendo con una imagen vieja (buildeada antes de este fix), hay que forzar un rebuild/redeploy, no alcanza con reiniciar el contenedor.
+
 ## Prisma: "Environment variable not found: DATABASE_URL" durante un build de Docker
 
 Esto es **esperado y no es un bug** — pasa durante `next build` porque Next.js intenta pre-renderizar cada ruta al buildear, y en esa etapa no hay `DATABASE_URL` disponible (solo se inyecta en runtime). Mientras el build termine con `✓ Generating static pages` y las rutas queden marcadas `ƒ (Dynamic)`, está todo bien. Si en cambio el build directamente falla (exit code distinto de 0), ahí sí hay un problema real.

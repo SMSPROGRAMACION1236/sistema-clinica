@@ -72,7 +72,7 @@ export async function runCreateAppointment(
 
   const available = await isProfessionalAvailableOn(args.professionalId, date);
   if (!available) {
-    return { success: false, message: "El profesional no atiende ese día. Ofrecele otra fecha u otro profesional de la misma especialidad." };
+    return { success: false, message: "El profesional no atiende en ese día u horario. Ofrecele otro horario, otra fecha, u otro profesional de la misma especialidad." };
   }
 
   const free = await isSlotFree(args.professionalId, date);

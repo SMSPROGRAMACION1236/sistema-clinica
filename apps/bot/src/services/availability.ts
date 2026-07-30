@@ -33,7 +33,18 @@ export async function isProfessionalAvailableOn(professionalId: string, date: Da
 
   const weekday = WEEKDAY_KEYS[date.getDay()];
   const hours = (professional.weeklyAvailability as unknown as WeeklyHours)[weekday];
-  return hours?.enabled ?? false;
+  if (!hours?.enabled) return false;
+
+  return isWithinRange(date, hours.open, hours.close);
+}
+
+function isWithinRange(date: Date, open: string, close: string): boolean {
+  const minutesOfDay = date.getHours() * 60 + date.getMinutes();
+  const [openH, openM] = open.split(":").map(Number);
+  const [closeH, closeM] = close.split(":").map(Number);
+  const openMinutes = openH * 60 + openM;
+  const closeMinutes = closeH * 60 + closeM;
+  return minutesOfDay >= openMinutes && minutesOfDay < closeMinutes;
 }
 
 /** No hay otro turno PENDING/CONFIRMED con el mismo profesional en el mismo horario exacto. */
