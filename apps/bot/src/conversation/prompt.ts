@@ -1,4 +1,5 @@
 import { DEFAULT_BOT_INSTRUCTIONS, type ClinicSettings, type Professional } from "@sistema-clinica/db";
+import { clinicParts, clinicTodayLabel } from "../lib/clinicTime";
 
 export function buildSystemPrompt(settings: ClinicSettings, professionals: Professional[]): string {
   const professionalsBySpecialty = new Map<string, string[]>();
@@ -11,13 +12,8 @@ export function buildSystemPrompt(settings: ClinicSettings, professionals: Profe
     .map(([specialty, names]) => `- ${specialty}: ${names.join(", ")}`)
     .join("\n");
 
-  const today = new Date().toLocaleDateString("es-PY", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "America/Asuncion",
-  });
+  const todayParts = clinicParts(new Date());
+  const todayISO = `${todayParts.year}-${String(todayParts.month + 1).padStart(2, "0")}-${String(todayParts.day).padStart(2, "0")}`;
 
   const instructions = settings.botInstructions?.trim() || DEFAULT_BOT_INSTRUCTIONS;
   const promotions = settings.activePromotions?.trim();
@@ -26,7 +22,8 @@ export function buildSystemPrompt(settings: ClinicSettings, professionals: Profe
 
 Datos de la clínica:
 - Dirección: ${settings.address}
-- Hoy es: ${today}
+- Hoy es: ${clinicTodayLabel()} (formato YYYY-MM-DD: ${todayISO})
+- Cuando llames a create_appointment, calculá la fecha SIEMPRE en formato YYYY-MM-DD a partir de "hoy" de arriba (ej. "hoy" = ${todayISO}, "mañana" = el día siguiente). Nunca asumas otra fecha de referencia.
 
 Especialidades y profesionales disponibles:
 ${professionalsText}

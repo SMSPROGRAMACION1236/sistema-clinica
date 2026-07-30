@@ -1,6 +1,7 @@
 import { prisma } from "@sistema-clinica/db";
 import type { ToolDefinition } from "../services/llm";
 import { isProfessionalAvailableOn, isSlotFree } from "../services/availability";
+import { clinicDateTime } from "../lib/clinicTime";
 
 export const listProfessionalsTool: ToolDefinition = {
   type: "function",
@@ -63,8 +64,7 @@ export async function runCreateAppointment(
   }
 
   const [hour, minute] = args.time.split(":").map(Number);
-  const date = new Date(`${args.date}T00:00:00`);
-  date.setHours(hour, minute, 0, 0);
+  const date = clinicDateTime(args.date, hour, minute);
 
   if (date.getTime() < Date.now() - 60 * 60 * 1000) {
     return { success: false, message: "La fecha y hora ya pasaron. Pedile al paciente una fecha futura." };

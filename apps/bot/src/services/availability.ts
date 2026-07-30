@@ -1,24 +1,22 @@
 import { prisma } from "@sistema-clinica/db";
+import { clinicParts, clinicStartOfDay } from "../lib/clinicTime";
 
 type DayHours = { enabled: boolean; open: string; close: string };
 type WeeklyHours = { mon: DayHours; tue: DayHours; wed: DayHours; thu: DayHours; fri: DayHours; sat: DayHours; sun: DayHours };
 
 const WEEKDAY_KEYS: Array<keyof WeeklyHours> = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 /**
  * Disponibilidad de un profesional en una fecha puntual, resuelta en 3 niveles:
  * 1) BlackoutDay (corte duro general, feriado/cierre) — gana siempre.
  * 2) ProfessionalAvailabilityException (puntual, por profesional+fecha).
  * 3) Professional.weeklyAvailability (horario semanal default) + Professional.active.
+ *
+ * Todos los cálculos de día/hora usan la hora de pared de la clínica
+ * (ver lib/clinicTime.ts), no la zona horaria del proceso.
  */
 export async function isProfessionalAvailableOn(professionalId: string, date: Date): Promise<boolean> {
-  const day = startOfDay(date);
+  const day = clinicStartOfDay(date);
 
   const blackout = await prisma.blackoutDay.findUnique({ where: { date: day } });
   if (blackout) return false;
@@ -31,15 +29,16 @@ export async function isProfessionalAvailableOn(professionalId: string, date: Da
   const professional = await prisma.professional.findUnique({ where: { id: professionalId } });
   if (!professional || !professional.active) return false;
 
-  const weekday = WEEKDAY_KEYS[date.getDay()];
+  const parts = clinicParts(date);
+  const weekday = WEEKDAY_KEYS[parts.weekday];
   const hours = (professional.weeklyAvailability as unknown as WeeklyHours)[weekday];
   if (!hours?.enabled) return false;
 
-  return isWithinRange(date, hours.open, hours.close);
+  return isWithinRange(parts.hours, parts.minutes, hours.open, hours.close);
 }
 
-function isWithinRange(date: Date, open: string, close: string): boolean {
-  const minutesOfDay = date.getHours() * 60 + date.getMinutes();
+function isWithinRange(hours: number, minutes: number, open: string, close: string): boolean {
+  const minutesOfDay = hours * 60 + minutes;
   const [openH, openM] = open.split(":").map(Number);
   const [closeH, closeM] = close.split(":").map(Number);
   const openMinutes = openH * 60 + openM;

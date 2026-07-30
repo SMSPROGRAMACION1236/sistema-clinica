@@ -19,13 +19,17 @@ Cada uno de estos pasó de verdad mientras se armaba este repo (o su proyecto he
 4. **El bot está apagado desde el panel** (`ClinicSettings.botEnabled = false`, sección Configuración → kill switch). Log esperado: `[webhook] mensaje ignorado (bot apagado desde el panel)`. Antes de asumir otra causa, entrá a `/configuracion` en el panel y confirmá que el toggle esté en "Activo".
 5. Revisá los logs del contenedor del bot en vivo mientras alguien manda el mensaje — no asumas nada sin ver el log real.
 
-## El bot dice "el profesional no atiende hoy" para un horario que en realidad está fuera de rango (no es un día libre)
+## El bot rechaza turnos que en realidad están dentro del horario del profesional ("no atiende hoy" siendo falso)
 
-**Síntoma:** le pedís un turno a un profesional en un horario fuera de su rango de atención (ej. las 15hs a alguien que atiende de 8 a 13) y el bot responde como si no atendiera *ese día*, en vez de decir que ese horario puntual no está disponible.
+**Síntoma:** le pedís un turno a un profesional en un horario que sí está dentro de su rango de atención (ej. las 18hs a la Dra. Ramírez, que atiende 13-19) y el bot igual dice que no está disponible ese día/horario — pasa consistentemente, con distintos profesionales, distintos días y distintas horas.
 
-**Causa:** `apps/bot/src/services/availability.ts` (`isProfessionalAvailableOn`) originalmente solo chequeaba si el día de la semana estaba habilitado en `weeklyAvailability`, sin comparar la hora pedida contra `open`/`close` de ese día — ya está arreglado (función `isWithinRange`). Si volvés a tocar ese archivo, no saques ese chequeo.
+**Causa real (no es solo un tema de código faltante, es un tema de zona horaria):** toda la lógica de disponibilidad (`apps/bot/src/services/availability.ts`) necesita saber qué día de la semana y qué hora "de pared" (hora de Asunción) corresponde a la fecha/hora que pidió el paciente. La primera versión de esto usaba `new Date(str)` + `.getHours()`/`.getDay()`, que dependen de la zona horaria **del proceso** (variable de entorno `TZ` + base de datos de zonas del sistema operativo). Instalar `tzdata` en el Dockerfile (`apk add tzdata`) ayuda pero **no garantiza nada** si `TZ` no está bien seteada en el Environment del servicio, o si algo más en la cadena falla — y en un contenedor Alpine es fácil que esto quede mal sin que se note.
 
-**Relacionado — zona horaria en Alpine:** el `Dockerfile` del bot instala `tzdata` (`apk add --no-cache openssl tzdata`) porque Alpine no la trae por defecto. Sin esto, aunque `TZ=America/Asuncion` esté seteada como variable de entorno, los cálculos de fecha/hora del contenedor pueden quedar inconsistentes (afecta qué día de la semana y qué hora "cree" que es el bot al chequear disponibilidad). Si ves comportamiento raro de fechas/horarios que no se explica por el código, confirmá primero que la imagen desplegada tiene este paquete — si el bot está corriendo con una imagen vieja (buildeada antes de este fix), hay que forzar un rebuild/redeploy, no alcanza con reiniciar el contenedor.
+**Solución aplicada:** se sacó la dependencia de la zona horaria del proceso por completo. `apps/bot/src/lib/clinicTime.ts` hace la aritmética a mano con un offset fijo (`UTC-4`, Paraguay no tiene horario de verano desde 2024) usando los getters `getUTC*` de `Date`, que son siempre deterministas sin importar cómo esté configurado el contenedor. `availability.ts`, `conversation/tools.ts` (construcción de la fecha del turno) y `conversation/prompt.ts` (la fecha de "hoy" que ve el LLM) usan este módulo — **no** hay que volver a usar `Date.prototype.getHours()/getDay()` ni `toLocaleDateString` con `timeZone` en ningún código que decida disponibilidad. Se verificó forzando `TZ=UTC` y `TZ=` (vacía) en local: da exactamente el mismo resultado en los dos casos.
+
+Si Paraguay volviera a tener horario de verano, el único lugar a tocar es la constante `CLINIC_UTC_OFFSET_MINUTES` en `clinicTime.ts`.
+
+`apk add tzdata` en el Dockerfile del bot se dejó igual (no molesta, puede servir para otras cosas), pero ya no es la pieza que resuelve este bug.
 
 ## Prisma: "Environment variable not found: DATABASE_URL" durante un build de Docker
 
