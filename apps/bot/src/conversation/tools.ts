@@ -1,6 +1,6 @@
 import { prisma } from "@sistema-clinica/db";
 import type { ToolDefinition } from "../services/llm";
-import { isProfessionalAvailableOn, isSlotFree } from "../services/availability";
+import { checkAvailability, isSlotFree, type AvailabilityResult } from "../services/availability";
 import { clinicDateTime } from "../lib/clinicTime";
 
 export const listProfessionalsTool: ToolDefinition = {
@@ -70,9 +70,9 @@ export async function runCreateAppointment(
     return { success: false, message: "La fecha y hora ya pasaron. Pedile al paciente una fecha futura." };
   }
 
-  const available = await isProfessionalAvailableOn(args.professionalId, date);
-  if (!available) {
-    return { success: false, message: "El profesional no atiende en ese día u horario. Ofrecele otro horario, otra fecha, u otro profesional de la misma especialidad." };
+  const availability = await checkAvailability(args.professionalId, date);
+  if (!availability.available) {
+    return { success: false, message: unavailabilityMessage(availability) };
   }
 
   const free = await isSlotFree(args.professionalId, date);
@@ -93,4 +93,19 @@ export async function runCreateAppointment(
     success: true,
     message: `Turno creado para ${args.name}, el ${args.date} a las ${args.time}.`,
   };
+}
+
+function unavailabilityMessage(result: Extract<AvailabilityResult, { available: false }>): string {
+  switch (result.reason) {
+    case "blackout":
+      return `Ese día la clínica está cerrada${result.note ? ` (${result.note})` : ""}. Ofrecele otra fecha.`;
+    case "exception":
+      return "El profesional tiene bloqueada esa fecha puntual (ausencia excepcional, no es su horario habitual). Ofrecele otra fecha u otro profesional de la misma especialidad.";
+    case "inactive":
+      return "Ese profesional ya no está en actividad en la clínica. Ofrecele otro profesional de la misma especialidad.";
+    case "day-off":
+      return `El profesional no atiende los ${result.weekday}. Ofrecele otro día, o preguntale por otro profesional de la misma especialidad.`;
+    case "out-of-hours":
+      return `Ese horario está fuera del rango de atención del profesional (atiende de ${result.open} a ${result.close}). Ofrecele un horario dentro de ese rango.`;
+  }
 }
