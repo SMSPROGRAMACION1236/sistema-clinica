@@ -31,6 +31,14 @@ Si Paraguay volviera a tener horario de verano, el único lugar a tocar es la co
 
 `apk add tzdata` en el Dockerfile del bot se dejó igual (no molesta, puede servir para otras cosas), pero ya no es la pieza que resuelve este bug.
 
+## Un feriado o una excepción puntual de un profesional "no hace nada" (el bot sigue ofreciendo turnos ese día)
+
+**Síntoma:** cargaste un día bloqueado (feriado/cierre) o una excepción de un profesional puntual, pero el bot igual permite agendar ese día — como si no existiera el bloqueo.
+
+**Causa real:** `BlackoutDay.date` y `ProfessionalAvailabilityException.date` tienen que coincidir EXACTO (comparación de igualdad, no de rango) con lo que `checkAvailability` calcula como "medianoche de la clínica" (`clinicStartOfDay` en `apps/bot/src/lib/clinicTime.ts`, que es `04:00 UTC` para América/Asunción, no `00:00 UTC`). El seed original y las acciones del panel (`apps/panel/app/(dashboard)/profesionales/actions.ts`) guardaban estas fechas con `new Date(...)`/`setHours(0,0,0,0)` en UTC "ingenuo" (`00:00 UTC`) — nunca coincidían con la búsqueda, así que el bloqueo quedaba cargado en la base pero sin ningún efecto real. Se detectó recién con una prueba end-to-end real contra una base de datos, no por inspección de código ni por compilación — si volvés a tocar estas dos tablas, **siempre verificalo con datos reales, no asumas que compila = funciona**.
+
+**Solución aplicada:** tanto `packages/db/prisma/seed.ts` como `apps/panel/lib/clinicTime.ts` (`clinicDateFromDateInput`, usada en `profesionales/actions.ts`) ahora construyen estas fechas con la misma aritmética de offset fijo que usa el bot para buscarlas. Si agregás en cualquier lado un nuevo lugar que escriba en `BlackoutDay.date` o `ProfessionalAvailabilityException.date`, tiene que usar esa misma función — nunca `new Date(dateStr)` a secas.
+
 ## El bot dice que "confirmó" un turno pero no aparece nada en el panel
 
 **Síntoma:** el bot ofrece un profesional, pregunta si confirmás fecha/hora, respondés algo tipo "todo correcto" en un mensaje aparte, y el turno nunca aparece en `/turnos` — o el bot sigue la conversación como si hubiera funcionado.

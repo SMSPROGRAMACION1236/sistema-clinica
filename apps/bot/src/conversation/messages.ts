@@ -1,5 +1,7 @@
+import { clinicDateLabel } from "../lib/clinicTime";
+
 export function reminderMessage(params: { date: Date; hour: number; minute: number; professionalName: string }): string {
-  const dateLabel = params.date.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" });
+  const dateLabel = clinicDateLabel(params.date);
   const timeLabel = `${String(params.hour).padStart(2, "0")}:${String(params.minute).padStart(2, "0")}`;
   return (
     `¡Hola! Te recordamos tu turno con ${params.professionalName} para ${dateLabel} a las ${timeLabel}.\n\n` +

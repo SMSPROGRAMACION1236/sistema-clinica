@@ -5,6 +5,7 @@ import { sendWhatsAppText } from "../services/ycloud";
 import { reminderMessage } from "../conversation/messages";
 import { armReminderConfirmation } from "../conversation/engine";
 import { isNumberAllowed } from "../lib/allowlist";
+import { clinicParts } from "../lib/clinicTime";
 
 const CHECK_INTERVAL_CRON = "*/15 * * * *"; // cada 15 minutos
 
@@ -34,10 +35,11 @@ async function sendPendingReminders(): Promise<void> {
   for (const appointment of appointments) {
     if (!isNumberAllowed(appointment.patient.phone)) continue;
 
+    const parts = clinicParts(appointment.date);
     const text = reminderMessage({
       date: appointment.date,
-      hour: appointment.date.getHours(),
-      minute: appointment.date.getMinutes(),
+      hour: parts.hours,
+      minute: parts.minutes,
       professionalName: appointment.professional.name,
     });
 

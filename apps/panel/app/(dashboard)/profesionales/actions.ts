@@ -2,12 +2,7 @@
 
 import { prisma } from "@sistema-clinica/db";
 import { revalidatePath } from "next/cache";
-
-function atMidnight(dateStr: string): Date {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { clinicDateFromDateInput as atMidnight } from "@/lib/clinicTime";
 
 /** Alterna la disponibilidad puntual de un profesional para una fecha exacta. */
 export async function toggleProfessionalAvailability(professionalId: string, formData: FormData) {

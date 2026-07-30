@@ -82,7 +82,7 @@ export default async function TurnosPage({
               {appointments.map((a) => (
                 <tr key={a.id} className="border-b border-gridline last:border-0">
                   <td className="px-4 py-2.5 tabular-nums">
-                    {a.date.toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short" })}
+                    {a.date.toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short", timeZone: "America/Asuncion" })}
                   </td>
                   <td className="px-4 py-2.5 text-ink-primary">{a.patient.name ?? "—"}</td>
                   <td className="px-4 py-2.5 text-ink-secondary">{a.professional.specialty}</td>

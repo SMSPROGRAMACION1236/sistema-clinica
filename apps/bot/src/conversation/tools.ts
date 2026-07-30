@@ -53,6 +53,25 @@ interface CreateAppointmentArgs {
   time: string;
 }
 
+/** minúsculas + sin tildes/diacríticos, para comparar nombres sin depender de que el LLM/transcripción los reproduzca exacto. */
+function normalizeName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+async function findProfessionalByName(rawName: string) {
+  const normalizedTarget = normalizeName(rawName);
+  const candidates = await prisma.professional.findMany({ where: { active: true } });
+  return (
+    candidates.find((p) => normalizeName(p.name) === normalizedTarget) ??
+    // Match parcial: el modelo a veces manda solo el apellido o sin el título (Dr./Dra./Lic.)
+    candidates.find((p) => normalizeName(p.name).includes(normalizedTarget) || normalizedTarget.includes(normalizeName(p.name)))
+  );
+}
+
 export async function runCreateAppointment(
   patientId: string,
   args: CreateAppointmentArgs
@@ -63,9 +82,11 @@ export async function runCreateAppointment(
     return { success: false, message: "Datos del turno inválidos o incompletos." };
   }
 
-  const professional = await prisma.professional.findFirst({
-    where: { name: { equals: args.professionalName?.trim(), mode: "insensitive" }, active: true },
-  });
+  if (!args.professionalName?.trim()) {
+    return { success: false, message: "Falta el nombre del profesional. Preguntáselo al paciente o llamá a list_professionals." };
+  }
+
+  const professional = await findProfessionalByName(args.professionalName);
   if (!professional) {
     return { success: false, message: `No encontramos a "${args.professionalName}" entre los profesionales activos. Llamá a list_professionals para confirmar el nombre exacto antes de reintentar.` };
   }

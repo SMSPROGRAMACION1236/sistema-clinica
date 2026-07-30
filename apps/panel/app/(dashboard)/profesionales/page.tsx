@@ -2,6 +2,7 @@ import { prisma } from "@sistema-clinica/db";
 import { CalendarOff } from "lucide-react";
 import { toggleProfessionalAvailability, toggleBlackoutDay } from "./actions";
 import { EmptyState } from "@/components/EmptyState";
+import { clinicStartOfDay, toClinicDateInputValue } from "@/lib/clinicTime";
 
 type DayHours = { enabled: boolean; open: string; close: string };
 type WeeklyHours = Record<string, DayHours>;
@@ -14,13 +15,10 @@ function summarizeHours(weekly: unknown): string {
   return `${first.open} – ${first.close}`;
 }
 
-function toDateInputValue(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+const toDateInputValue = toClinicDateInputValue;
 
 export default async function ProfesionalesPage() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = clinicStartOfDay(new Date());
 
   const [professionals, exceptions, blackoutDays] = await Promise.all([
     prisma.professional.findMany({ orderBy: { name: "asc" } }),
@@ -91,7 +89,7 @@ export default async function ProfesionalesPage() {
                   <div className="mt-3 space-y-1">
                     {upcoming.map((e) => (
                       <p key={e.id} className="text-xs text-ink-muted">
-                        {e.date.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit" })}:{" "}
+                        {e.date.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", timeZone: "America/Asuncion" })}:{" "}
                         <span className={e.available ? "text-status-good" : "text-status-critical"}>
                           {e.available ? "disponible" : "no disponible"}
                         </span>{" "}
@@ -142,7 +140,7 @@ export default async function ProfesionalesPage() {
                 <div key={b.id} className="flex items-center gap-2.5 text-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-status-critical" />
                   <span className="font-medium text-ink-primary">
-                    {b.date.toLocaleDateString("es-PY", { day: "2-digit", month: "long" })}
+                    {b.date.toLocaleDateString("es-PY", { day: "2-digit", month: "long", timeZone: "America/Asuncion" })}
                   </span>
                   <span className="text-ink-muted">{b.reason ?? "Bloqueo general"}</span>
                 </div>

@@ -58,6 +58,12 @@ export function clinicStartOfDay(instant: Date): Date {
   return clinicDateTime(dateStr, 0, 0);
 }
 
+/** Texto legible ("jueves, 30 de julio") de un instante cualquiera, en hora de la clínica. */
+export function clinicDateLabel(instant: Date): string {
+  const p = clinicParts(instant);
+  return `${WEEKDAY_NAMES[p.weekday]}, ${p.day} de ${MONTH_NAMES[p.month]}`;
+}
+
 /** Texto legible ("jueves, 30 de julio de 2026") para mostrarle al LLM en el prompt. */
 export function clinicTodayLabel(): string {
   const p = clinicParts(new Date());

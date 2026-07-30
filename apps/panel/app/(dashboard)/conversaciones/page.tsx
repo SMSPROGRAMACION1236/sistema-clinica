@@ -26,7 +26,7 @@ export default async function ConversacionesPage() {
                   <p className="truncate text-xs text-ink-secondary">{p.messages[0]?.body}</p>
                 </div>
                 <span className="shrink-0 text-xs tabular-nums text-ink-muted">
-                  {p.messages[0]?.createdAt.toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short" })}
+                  {p.messages[0]?.createdAt.toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short", timeZone: "America/Asuncion" })}
                 </span>
               </div>
             ))}

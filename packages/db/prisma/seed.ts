@@ -8,18 +8,33 @@ function hours(open: string, close: string) {
 }
 const closed = { enabled: false, open: "08:00", close: "12:00" };
 
-function atTime(daysFromNow: number, hh: number, mm = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  d.setHours(hh, mm, 0, 0);
-  return d;
+/**
+ * Mismo offset fijo (America/Asuncion, UTC-4) que apps/bot/src/lib/clinicTime.ts
+ * y apps/panel/lib/clinicTime.ts. Las fechas de BlackoutDay y
+ * ProfessionalAvailabilityException tienen que coincidir EXACTO con lo que
+ * el bot busca (misma definición de "medianoche de la clínica") — antes acá
+ * se guardaban en UTC ingenuo y nunca hacían match, dejando el feriado del
+ * seed sin efecto real.
+ */
+const CLINIC_UTC_OFFSET_MINUTES = -4 * 60;
+
+function fromClinicYMD(year: number, month0: number, day: number, hh = 0, mm = 0): Date {
+  const fakeUtcMs = Date.UTC(year, month0, day, hh, mm, 0, 0);
+  return new Date(fakeUtcMs - CLINIC_UTC_OFFSET_MINUTES * 60 * 1000);
 }
 
-function atMidnight(daysFromNow: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  d.setHours(0, 0, 0, 0);
-  return d;
+function clinicPartsNow(): { year: number; month0: number; day: number } {
+  const fake = new Date(Date.now() + CLINIC_UTC_OFFSET_MINUTES * 60 * 1000);
+  return { year: fake.getUTCFullYear(), month0: fake.getUTCMonth(), day: fake.getUTCDate() };
+}
+
+function atTime(daysFromNow: number, hh: number, mm = 0): Date {
+  const p = clinicPartsNow();
+  return fromClinicYMD(p.year, p.month0, p.day + daysFromNow, hh, mm);
+}
+
+function atMidnight(daysFromNow: number): Date {
+  return atTime(daysFromNow, 0, 0);
 }
 
 async function main() {
@@ -168,15 +183,17 @@ async function main() {
   }
 
   // Blackout days (feriados / cierre general): ningún profesional ofrece turnos.
+  const aug15 = fromClinicYMD(2026, 7, 15); // agosto = mes 7 (0-indexado)
+  const aug25 = fromClinicYMD(2026, 7, 25);
   await prisma.blackoutDay.upsert({
-    where: { date: new Date("2026-08-15T00:00:00.000Z") },
+    where: { date: aug15 },
     update: {},
-    create: { date: new Date("2026-08-15T00:00:00.000Z"), reason: "Feriado — Fundación de Asunción" },
+    create: { date: aug15, reason: "Feriado — Fundación de Asunción" },
   });
   await prisma.blackoutDay.upsert({
-    where: { date: new Date("2026-08-25T00:00:00.000Z") },
+    where: { date: aug25 },
     update: {},
-    create: { date: new Date("2026-08-25T00:00:00.000Z"), reason: "Cierre por mantenimiento" },
+    create: { date: aug25, reason: "Cierre por mantenimiento" },
   });
 
   // Excepción puntual: la Dra. Benítez no atiende un día puntual próximo, pese a su horario semanal.

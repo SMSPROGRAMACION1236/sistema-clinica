@@ -4,12 +4,11 @@ import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { appointmentStatusMeta } from "@/lib/status";
+import { clinicStartOfDay } from "@/lib/clinicTime";
 
 export default async function DashboardHomePage() {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date(startOfToday);
-  endOfToday.setDate(endOfToday.getDate() + 1);
+  const startOfToday = clinicStartOfDay(new Date());
+  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
   const [todayAppointments, professionals] = await Promise.all([
     prisma.appointment.findMany({
@@ -47,7 +46,7 @@ export default async function DashboardHomePage() {
       <div>
         <h1 className="text-xl font-semibold text-ink-primary">Resumen de hoy</h1>
         <p className="text-sm text-ink-muted">
-          {startOfToday.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" })}
+          {startOfToday.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Asuncion" })}
         </p>
       </div>
 
@@ -100,7 +99,7 @@ export default async function DashboardHomePage() {
                   <p className="text-xs text-ink-muted">turnos hoy</p>
                 </div>
                 <div className="w-28 text-right font-mono text-xs text-ink-secondary">
-                  {next ? next.date.toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                  {next ? next.date.toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short", timeZone: "America/Asuncion" }) : "—"}
                 </div>
               </div>
             ))}
@@ -126,7 +125,7 @@ export default async function DashboardHomePage() {
               {todayAppointments.map((a) => (
                 <tr key={a.id} className="border-b border-gridline last:border-0">
                   <td className="px-4 py-2.5 tabular-nums">
-                    {a.date.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}
+                    {a.date.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit", timeZone: "America/Asuncion" })}
                   </td>
                   <td className="px-4 py-2.5 text-ink-primary">{a.patient.name ?? a.patient.phone}</td>
                   <td className="px-4 py-2.5 text-ink-secondary">{a.professional.name}</td>

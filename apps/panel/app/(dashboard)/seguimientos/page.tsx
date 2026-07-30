@@ -4,6 +4,7 @@ import { StatCard } from "@/components/StatCard";
 import { EmptyState } from "@/components/EmptyState";
 import { CountdownBadge } from "@/components/CountdownBadge";
 import { toggleFollowUp } from "./actions";
+import { clinicStartOfMonth } from "@/lib/clinicTime";
 
 export default async function SeguimientosPage() {
   const now = new Date();
@@ -24,7 +25,7 @@ export default async function SeguimientosPage() {
   );
 
   const sentThisMonth = await prisma.followUp.count({
-    where: { sentAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) } },
+    where: { sentAt: { gte: clinicStartOfMonth(now) } },
   });
 
   return (
