@@ -31,6 +31,14 @@ Si Paraguay volviera a tener horario de verano, el único lugar a tocar es la co
 
 `apk add tzdata` en el Dockerfile del bot se dejó igual (no molesta, puede servir para otras cosas), pero ya no es la pieza que resuelve este bug.
 
+## El bot no responde a notas de voz (audio) o tira error de transcripción
+
+**Causa posible 1 — falta `OPENROUTER_TRANSCRIPTION_MODEL`:** si no está seteada, cae al default `openai/whisper-large-v3-turbo`, así que no debería faltar, pero confirmá que la variable esté en el Environment del bot si cambiaste el modelo.
+
+**Causa posible 2 — la descarga del audio falla:** `apps/bot/src/services/ycloud.ts` (`downloadMedia`) descarga `whatsappInboundMessage.audio.link` con el header `X-API-Key`. Si YCloud cambia el formato de esa URL o el link ya expiró (son válidos un tiempo limitado), vas a ver `YCloud rechazó la descarga del media` en los logs del bot.
+
+**Causa posible 3 — formato de audio no soportado:** `apps/bot/src/services/transcription.ts` mapea el `mime_type` que manda YCloud (normalmente `audio/ogg` para notas de voz de WhatsApp) a uno de los formatos que acepta OpenRouter (`wav/mp3/flac/m4a/ogg/webm/aac`). Si WhatsApp manda un mime type nuevo que no está en el mapa, cae a `ogg` por default — si el audio real no es ogg, la transcripción puede fallar o salir vacía. Revisá el log `[webhook] transcribiendo nota de voz entrante...` seguido del error real de OpenRouter.
+
 ## Prisma: "Environment variable not found: DATABASE_URL" durante un build de Docker
 
 Esto es **esperado y no es un bug** — pasa durante `next build` porque Next.js intenta pre-renderizar cada ruta al buildear, y en esa etapa no hay `DATABASE_URL` disponible (solo se inyecta en runtime). Mientras el build termine con `✓ Generating static pages` y las rutas queden marcadas `ƒ (Dynamic)`, está todo bien. Si en cambio el build directamente falla (exit code distinto de 0), ahí sí hay un problema real.

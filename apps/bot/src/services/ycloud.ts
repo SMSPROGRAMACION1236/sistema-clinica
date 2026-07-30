@@ -25,6 +25,24 @@ export async function sendWhatsAppText(to: string, body: string): Promise<void> 
 }
 
 /**
+ * Descarga el contenido de un media entrante (ej. audio de un mensaje de voz).
+ * El link que manda YCloud en el webhook (ej. `whatsappInboundMessage.audio.link`)
+ * requiere el mismo header X-API-Key para poder descargarse.
+ */
+export async function downloadMedia(link: string): Promise<Buffer> {
+  const res = await fetch(link, {
+    headers: { "X-API-Key": env.ycloudApiKey },
+  });
+
+  if (!res.ok) {
+    throw new Error(`YCloud rechazó la descarga del media (${res.status})`);
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
  * YCloud manda un único header "YCloud-Signature: t={timestamp},s={signature}".
  * La firma es HMAC-SHA256 de "{timestamp}.{rawBody}" con el webhook secret.
  * Ver: https://docs.ycloud.com/reference/webhook-integration-guide

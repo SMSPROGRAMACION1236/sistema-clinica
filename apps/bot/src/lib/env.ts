@@ -13,6 +13,7 @@ export const env = {
   whatsappBusinessNumber: required("WHATSAPP_BUSINESS_NUMBER"),
   openrouterApiKey: required("OPENROUTER_API_KEY"),
   openrouterModel: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
+  openrouterTranscriptionModel: process.env.OPENROUTER_TRANSCRIPTION_MODEL ?? "openai/whisper-large-v3-turbo",
   reminderHoursBefore: Number(process.env.REMINDER_HOURS_BEFORE ?? 24),
   reminderCutoffMinutes: Number(process.env.REMINDER_CUTOFF_MINUTES ?? 120),
   // Delay del seguimiento automático de leads fríos (ventana de 24h de WhatsApp).

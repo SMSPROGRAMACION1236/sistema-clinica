@@ -123,6 +123,7 @@ YCLOUD_WEBHOOK_SECRET=<del Paso 8>
 WHATSAPP_BUSINESS_NUMBER=<el número de WhatsApp Business, formato E.164>
 OPENROUTER_API_KEY=<del Paso 3>
 OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_TRANSCRIPTION_MODEL=openai/whisper-large-v3-turbo
 PORT=3001
 TZ=America/Asuncion
 REMINDER_HOURS_BEFORE=24
